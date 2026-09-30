@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presensi Guru</title>
+<style>
+  :root { --tinta:#1f3a5f; --kertas:#f6f8fa; --hijau:#2e7d5b; --garis:#cfd8e0; --galat:#b3372f; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--kertas); color:var(--tinta);
+         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height:1.5; }
+  main { max-width:420px; margin:0 auto; padding:32px 20px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  .sekolah { margin:0 0 24px; color:#52667d; }
+  label { display:block; font-weight:600; margin:16px 0 6px; }
+  input, textarea { width:100%; padding:12px; font-size:1rem; font-family:inherit; border:1px solid var(--garis); border-radius:8px; background:#fff; color:inherit; }
+  button { width:100%; padding:14px; margin-top:12px; font-size:1rem; font-weight:600; border:0; border-radius:8px;
+           background:var(--hijau); color:#fff; cursor:pointer; }
+  button.sekunder { background:#fff; color:var(--tinta); border:1px solid var(--garis); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  :focus-visible { outline:3px solid #7fb3ff; outline-offset:2px; }
+  .galat { color:var(--galat); min-height:1.5em; margin:12px 0 0; }
+  .sapa { font-size:1.15rem; margin:0 0 4px; }
+  .status { color:#52667d; margin:0 0 16px; }
+  h2 { font-size:1.2rem; margin:0 0 8px; }
+  .centang { display:flex; gap:10px; align-items:flex-start; font-weight:400; }
+  .centang input { width:auto; margin-top:5px; }
+  .bingkai { background:#000; border-radius:12px; overflow:hidden; aspect-ratio:3/4; margin-bottom:12px; }
+  .bingkai video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  .sukses { color:var(--hijau); font-weight:600; margin:0 0 8px; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Presensi Guru</h1>
+  <p class="sekolah" id="namaSekolah">Memuat…</p>
+
+  <section id="layarLogin">
+    <p class="sukses" id="sukses" role="status"></p>
+    <label for="username">Username</label>
+    <input id="username" autocomplete="username" autocapitalize="none" autocorrect="off">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <button id="tombolMasuk">Masuk</button>
+    <p class="galat" id="galatLogin" role="alert"></p>
+  </section>
+
+  <section id="layarUtama" hidden>
+    <p class="sapa" id="sapa"></p>
+    <p class="status" id="statusWajah"></p>
+    <button id="tombolDaftarWajah">Daftarkan wajah</button>
+    <button id="tombolPresensi" disabled>Presensi</button>
+    <button id="tombolManual" class="sekunder">Presensi manual</button>
+    <p class="status" id="infoPengajuan" hidden></p>
+    <button id="tombolKeluar" class="sekunder">Keluar</button>
+  </section>
+
+  <section id="layarSetuju" hidden>
+    <h2>Pendaftaran wajah</h2>
+    <p>Kamera akan merekam wajah Anda 4 kali. Yang disimpan hanya <strong>angka sidik wajah</strong>, bukan foto. Angka ini dipakai untuk mencocokkan wajah saat presensi, dan admin dapat menghapusnya kapan saja.</p>
+    <label class="centang"><input type="checkbox" id="centangSetuju"> Saya setuju wajah saya diproses untuk presensi.</label>
+    <button id="tombolLanjut" disabled>Lanjut ke kamera</button>
+    <button id="batalSetuju" class="sekunder">Kembali</button>
+  </section>
+
+  <section id="layarKamera" hidden>
+    <div class="bingkai"><video id="video" playsinline muted></video></div>
+    <p class="sapa" id="petunjuk"></p>
+    <p class="status" id="progres"></p>
+    <button id="tombolRekam">Rekam wajah</button>
+    <button id="batalKamera" class="sekunder">Batal</button>
+    <p class="galat" id="galatKamera" role="alert"></p>
+  </section>
+
+  <section id="layarManual" hidden>
+    <h2>Presensi manual</h2>
+    <p>Gunakan bila kamera atau cahaya bermasalah. Lokasi Anda tetap dicek dan admin perlu menyetujui pengajuan ini.</p>
+    <label>Jenis presensi</label>
+    <label class="centang"><input type="radio" name="jenisManual" value="masuk" checked> Masuk</label>
+    <label class="centang"><input type="radio" name="jenisManual" value="pulang"> Pulang</label>
+    <label for="alasanManual">Alasan</label>
+    <textarea id="alasanManual" rows="3" maxlength="300" placeholder="Contoh: kamera HP rusak"></textarea>
+    <button id="tombolKirimManual">Kirim pengajuan</button>
+    <button id="batalManual" class="sekunder">Kembali</button>
+    <p class="galat" id="galatManual" role="alert"></p>
+  </section>
+
+  <section id="layarPresensi" hidden>
+    <div class="bingkai"><video id="videoP" playsinline muted></video></div>
+    <p class="sapa" id="petunjukP"></p>
+    <p class="galat" id="galatP" role="alert"></p>
+    <button id="tombolUlangP" hidden>Coba lagi</button>
+    <button id="batalP" class="sekunder">Kembali</button>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
+<script>
+// Ganti dengan URL Web App Apps Script Anda (akhiran /exec)
+const API_URL = 'https://script.google.com/macros/s/AKfycbwlsaiqfyK3_JAbKb3CW8UNqci6ucsud_mTOCQKkXucKKPnO6eKLSTxD1j-ZxAIv98W/exec';
+
+const $ = (id) => document.getElementById(id);
+
+async function panggil(aksi, data = {}) {
+  // text/plain menghindari preflight CORS yang tidak didukung Apps Script
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ aksi, ...data })
+  });
+  return res.json();
+}
+
+let guruSaatIni = null;
+
+function tampil(layar) {
+  ['layarLogin', 'layarUtama', 'layarSetuju', 'layarKamera', 'layarPresensi', 'layarManual'].forEach((id) => { $(id).hidden = id !== layar; });
+}
+
+function tampilkanUtama(guru) {
+  guruSaatIni = guru;
+  tampil('layarUtama');
+  $('sapa').textContent = 'Halo, ' + guru.nama;
+  const pesan = {
+    ya: 'Wajah Anda sudah terdaftar.',
+    menunggu: 'Pendaftaran wajah terkirim dan menunggu persetujuan admin.',
+    belum: 'Wajah Anda belum didaftarkan.'
+  };
+  $('statusWajah').textContent = pesan[guru.statusWajah] || pesan.belum;
+  $('tombolDaftarWajah').hidden = guru.statusWajah === 'ya';
+  $('tombolPresensi').disabled = guru.statusWajah !== 'ya';
+  const p = guru.pengajuan, arti = { menunggu: 'menunggu persetujuan admin', disetujui: 'disetujui', ditolak: 'ditolak' };
+  $('infoPengajuan').hidden = !p;
+  if (p) $('infoPengajuan').textContent = 'Pengajuan manual ' + p.jenis + ' (' + p.tanggal + '): ' + (arti[p.status] || p.status) + '.';
+  $('tombolDaftarWajah').textContent = guru.statusWajah === 'menunggu' ? 'Ulangi pendaftaran wajah' : 'Daftarkan wajah';
+}
+
+function tampilkanLogin(pesan = '') {
+  sessionStorage.removeItem('token');
+  tampil('layarLogin');
+  $('password').value = '';
+  $('sukses').textContent = pesan;
+}
+
+async function masuk() {
+  const tombol = $('tombolMasuk');
+  $('galatLogin').textContent = '';
+  $('sukses').textContent = '';
+  const username = $('username').value.trim();
+  const password = $('password').value;
+  if (!username || !password) { $('galatLogin').textContent = 'Isi username dan password.'; return; }
+  tombol.disabled = true; tombol.textContent = 'Memeriksa…';
+  try {
+    const r = await panggil('login', { username, password });
+    if (r.ok) { sessionStorage.setItem('token', r.token); tampilkanUtama(r.guru); }
+    else $('galatLogin').textContent = r.pesan;
+  } catch (e) {
+    $('galatLogin').textContent = 'Tidak bisa terhubung ke server. Periksa sinyal, lalu coba lagi.';
+  } finally {
+    tombol.disabled = false; tombol.textContent = 'Masuk';
+  }
+}
+
+async function keluar() {
+  const token = sessionStorage.getItem('token');
+  tampilkanLogin();
+  try { await panggil('logout', { token }); } catch (e) {}
+}
+
+async function mulai() {
+  $('tombolMasuk').addEventListener('click', masuk);
+  $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') masuk(); });
+  $('tombolKeluar').addEventListener('click', keluar);
+  $('tombolDaftarWajah').addEventListener('click', () => { $('centangSetuju').checked = false; $('tombolLanjut').disabled = true; tampil('layarSetuju'); });
+  $('centangSetuju').addEventListener('change', (e) => { $('tombolLanjut').disabled = !e.target.checked; });
+  $('batalSetuju').addEventListener('click', () => tampil('layarUtama'));
+  $('tombolLanjut').addEventListener('click', bukaKamera);
+  $('tombolRekam').addEventListener('click', rekam);
+  $('batalKamera').addEventListener('click', () => { tutupKamera(); tampil('layarUtama'); });
+  $('tombolPresensi').addEventListener('click', mulaiPresensi);
+  $('tombolUlangP').addEventListener('click', mulaiPresensi);
+  $('tombolManual').addEventListener('click', () => { $('alasanManual').value = ''; $('galatManual').textContent = ''; tampil('layarManual'); });
+  $('batalManual').addEventListener('click', () => tampil('layarUtama'));
+  $('tombolKirimManual').addEventListener('click', kirimManual);
+  $('batalP').addEventListener('click', () => { idPresensi++; tutupKamera(); tampil('layarUtama'); });
+  try {
+    const c = await panggil('config');
+    if (c.ok) konfig = c.config;
+    $('namaSekolah').textContent = c.ok ? c.config.nama_sekolah : '';
+    const token = sessionStorage.getItem('token');
+    if (token) {
+      const s = await panggil('cekSesi', { token });
+      if (s.ok) tampilkanUtama(s.guru); else tampilkanLogin();
+    }
+  } catch (e) {
+    $('namaSekolah').textContent = 'Tidak bisa terhubung ke server.';
+  }
+}
+// ---------- Pendaftaran wajah ----------
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/';
+const LANGKAH = ['Hadap lurus ke kamera.', 'Miringkan wajah sedikit ke kiri.', 'Miringkan wajah sedikit ke kanan.', 'Hadap lurus lagi, boleh tersenyum.'];
+let modelSiap = false, stream = null, rekaman = [];
+
+function idPerangkat() {
+  try {
+    let v = localStorage.getItem('id_perangkat');
+    if (!v) {
+      v = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2);
+      localStorage.setItem('id_perangkat', v);
+    }
+    return v;
+  } catch (e) { return ''; }
+}
+
+async function siapkanModel() {
+  if (modelSiap) return;
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+  ]);
+  modelSiap = true;
+}
+
+function tutupKamera() {
+  if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+  $('video').srcObject = null;
+  $('videoP').srcObject = null;
+}
+
+function perbaruiLangkah() {
+  $('petunjuk').textContent = LANGKAH[rekaman.length];
+  $('progres').textContent = 'Rekaman ' + (rekaman.length + 1) + ' dari ' + LANGKAH.length;
+}
+
+async function bukaKamera() {
+  tampil('layarKamera');
+  rekaman = [];
+  $('galatKamera').textContent = '';
+  $('tombolRekam').disabled = true;
+  $('petunjuk').textContent = 'Menyiapkan kamera dan model wajah…';
+  $('progres').textContent = 'Pertama kali bisa butuh beberapa detik.';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
+    $('video').srcObject = stream;
+    await $('video').play();
+    await siapkanModel();
+    perbaruiLangkah();
+    $('tombolRekam').disabled = false;
+  } catch (e) {
+    tutupKamera();
+    tampil('layarUtama');
+    $('statusWajah').textContent = (e && e.name === 'NotAllowedError')
+      ? 'Izin kamera ditolak. Izinkan kamera untuk situs ini di pengaturan browser, lalu coba lagi.'
+      : 'Kamera atau model wajah tidak bisa dimuat. Periksa sinyal, lalu coba lagi.';
+  }
+}
+
+const rataRata = (d) => d[0].map((_, i) => d.reduce((s, v) => s + v[i], 0) / d.length);
+const jarak = (a, b) => Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
+
+async function rekam() {
+  const tombol = $('tombolRekam');
+  $('galatKamera').textContent = '';
+  tombol.disabled = true;
+  try {
+    const video = $('video');
+    const hasil = await faceapi
+      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+      .withFaceLandmarks().withFaceDescriptors();
+    if (hasil.length === 0) throw new Error('Wajah tidak terdeteksi. Pastikan cahaya cukup dan wajah menghadap kamera.');
+    if (hasil.length > 1) throw new Error('Terdeteksi lebih dari satu wajah. Pastikan hanya Anda yang terlihat.');
+    if (hasil[0].detection.box.width / video.videoWidth < 0.3) throw new Error('Wajah terlalu jauh. Dekatkan HP ke wajah Anda.');
+    rekaman.push(Array.from(hasil[0].descriptor));
+    if (rekaman.length < LANGKAH.length) { perbaruiLangkah(); tombol.disabled = false; return; }
+    await kirimWajah();
+  } catch (e) {
+    $('galatKamera').textContent = e.message;
+    tombol.disabled = false;
+  }
+}
+
+async function kirimWajah() {
+  const rata = rataRata(rekaman);
+  const gagal = (pesan) => { rekaman = []; perbaruiLangkah(); throw new Error(pesan); };
+  if (rekaman.some((d) => jarak(d, rata) > 0.45)) gagal('Rekaman tidak konsisten. Ulangi dari awal dengan cahaya yang stabil.');
+  $('petunjuk').textContent = 'Mengirim…';
+  let r;
+  try {
+    r = await panggil('daftarWajah', { token: sessionStorage.getItem('token'), persetujuan: true, sidik: rata, idPerangkat: idPerangkat() });
+  } catch (e) { gagal('Gagal mengirim ke server. Periksa sinyal, lalu ulangi perekaman.'); }
+  if (!r.ok) gagal(r.pesan);
+  tutupKamera();
+  tampilkanUtama({ ...guruSaatIni, statusWajah: 'menunggu' });
+}
+
+// ---------- Presensi harian ----------
+let konfig = null, idPresensi = 0;
+
+const jarakTitik = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const rasioMata = (m) => (jarakTitik(m[1], m[5]) + jarakTitik(m[2], m[4])) / (2 * jarakTitik(m[0], m[3]));
+
+function ukurWajah(lm) {
+  const p = lm.positions;
+  return {
+    mata: (rasioMata(p.slice(36, 42)) + rasioMata(p.slice(42, 48))) / 2,
+    yaw: (p[30].x - p[0].x) / (p[16].x - p[0].x) // sekitar 0,5 bila menghadap lurus
+  };
+}
+
+function hitungJarak(lat1, lng1, lat2, lng2) {
+  const rad = Math.PI / 180, dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(a));
+}
+
+function ambilLokasi() {
+  return new Promise((selesai, gagal) => {
+    if (!navigator.geolocation) return gagal(new Error('Browser ini tidak mendukung lokasi.'));
+    navigator.geolocation.getCurrentPosition(selesai, (e) => gagal(new Error(e.code === 1
+      ? 'Izin lokasi ditolak. Izinkan lokasi untuk situs ini di pengaturan browser, lalu coba lagi.'
+      : 'Lokasi tidak ditemukan. Aktifkan GPS dan coba lagi, sebaiknya di tempat terbuka.')),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  });
+}
+
+// Liveness: kedip atau tengok kepala, dipilih acak
+async function jalankanTantangan(aktif) {
+  const tantangan = Math.random() < 0.5 ? 'kedip' : 'tengok';
+  $('petunjukP').textContent = tantangan === 'kedip'
+    ? 'Hadap kamera dan kedipkan mata.'
+    : 'Hadap kamera, tengokkan kepala ke satu sisi, lalu kembali lurus.';
+  const opsi = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+  const video = $('videoP'), mulai = Date.now();
+  let dasar = 0, frame = 0, tutup = false, lurus = false, menoleh = false;
+  while (aktif() && Date.now() - mulai < 15000) {
+    const h = await faceapi.detectSingleFace(video, opsi).withFaceLandmarks();
+    if (!h) continue;
+    const { mata, yaw } = ukurWajah(h.landmarks);
+    frame++;
+    if (tantangan === 'kedip') {
+      dasar = Math.max(dasar, mata);
+      if (!tutup && frame > 3 && mata < dasar * 0.75) tutup = true;
+      else if (tutup && mata > dasar * 0.88) return true;
+    } else {
+      if (yaw > 0.4 && yaw < 0.6) lurus = true;
+      if (lurus && (yaw < 0.35 || yaw > 0.65)) menoleh = true;
+      if (menoleh && yaw > 0.42 && yaw < 0.58) return true;
+    }
+  }
+  if (!aktif()) return false;
+  throw new Error('Gerakan belum terdeteksi. Coba lagi dengan cahaya yang lebih terang.');
+}
+
+async function ambilSidikLurus(aktif) {
+  const opsi = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+  const video = $('videoP'), mulai = Date.now();
+  while (aktif() && Date.now() - mulai < 10000) {
+    const semua = await faceapi.detectAllFaces(video, opsi).withFaceLandmarks();
+    if (semua.length > 1) throw new Error('Terdeteksi lebih dari satu wajah. Pastikan hanya Anda yang terlihat.');
+    if (semua.length === 1) {
+      const u = ukurWajah(semua[0].landmarks);
+      const besar = semua[0].detection.box.width / video.videoWidth;
+      if (u.yaw > 0.42 && u.yaw < 0.58 && u.mata > 0.2 && besar >= 0.3) {
+        const h = await faceapi.detectSingleFace(video, opsi).withFaceLandmarks().withFaceDescriptor();
+        if (h) return Array.from(h.descriptor);
+      }
+    }
+  }
+  if (!aktif()) return null;
+  throw new Error('Wajah belum terbaca jelas. Hadap lurus, dekatkan HP, dan pastikan cahaya cukup.');
+}
+
+async function mulaiPresensi() {
+  const saya = ++idPresensi, aktif = () => saya === idPresensi;
+  const petunjuk = (t) => { $('petunjukP').textContent = t; };
+  tampil('layarPresensi');
+  $('galatP').textContent = '';
+  $('tombolUlangP').hidden = true;
+  try {
+    petunjuk('Memeriksa lokasi…');
+    if (!konfig) {
+      const c = await panggil('config');
+      if (!c.ok) throw new Error('Pengaturan sekolah tidak bisa dimuat.');
+      konfig = c.config;
+    }
+    const pos = await ambilLokasi();
+    if (!aktif()) return;
+    const d = hitungJarak(pos.coords.latitude, pos.coords.longitude, konfig.lat_sekolah, konfig.lng_sekolah);
+    if (d > konfig.radius_meter) {
+      throw new Error('Anda berada sekitar ' + Math.round(d) + ' m dari sekolah, di luar batas ' + konfig.radius_meter + ' m. Presensi hanya bisa dilakukan di sekolah.');
+    }
+    petunjuk('Menyiapkan kamera…');
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
+    $('videoP').srcObject = stream;
+    await $('videoP').play();
+    await siapkanModel();
+    if (!aktif()) return;
+    if (!(await jalankanTantangan(aktif))) return;
+    petunjuk('Bagus. Hadap lurus ke kamera dan tahan sebentar.');
+    const sidik = await ambilSidikLurus(aktif);
+    if (!sidik) return;
+    petunjuk('Mengirim presensi…');
+    const r = await panggil('presensi', {
+      token: sessionStorage.getItem('token'), sidik,
+      lat: pos.coords.latitude, lng: pos.coords.longitude, idPerangkat: idPerangkat()
+    });
+    if (!aktif()) return;
+    tutupKamera();
+    if (r.ok) { tampilkanLogin(r.pesan + ' Anda keluar otomatis.'); return; }
+    if (r.sesiHabis) { tampilkanLogin(); $('galatLogin').textContent = r.pesan; return; }
+    throw new Error(r.pesan);
+  } catch (e) {
+    if (!aktif()) return;
+    tutupKamera();
+    petunjuk('');
+    $('galatP').textContent = e && e.name === 'NotAllowedError'
+      ? 'Izin kamera ditolak. Izinkan kamera untuk situs ini di pengaturan browser, lalu coba lagi.'
+      : e instanceof TypeError
+        ? 'Tidak bisa terhubung ke server. Periksa sinyal, lalu coba lagi.'
+        : (e.message || 'Terjadi kesalahan. Coba lagi.');
+    $('tombolUlangP').hidden = false;
+  }
+}
+
+// ---------- Presensi manual ----------
+async function kirimManual() {
+  const tombol = $('tombolKirimManual'), galat = $('galatManual');
+  galat.textContent = '';
+  const alasan = $('alasanManual').value.trim();
+  const jenis = document.querySelector('input[name="jenisManual"]:checked').value;
+  if (alasan.length < 5) { galat.textContent = 'Tulis alasan singkat (minimal 5 huruf).'; return; }
+  tombol.disabled = true;
+  tombol.textContent = 'Memeriksa lokasi…';
+  try {
+    if (!konfig) {
+      const c = await panggil('config');
+      if (!c.ok) throw new Error('Pengaturan sekolah tidak bisa dimuat.');
+      konfig = c.config;
+    }
+    const pos = await ambilLokasi();
+    const d = hitungJarak(pos.coords.latitude, pos.coords.longitude, konfig.lat_sekolah, konfig.lng_sekolah);
+    if (d > konfig.radius_meter) {
+      throw new Error('Anda berada sekitar ' + Math.round(d) + ' m dari sekolah, di luar batas ' + konfig.radius_meter + ' m. Pengajuan manual tetap harus dari sekolah.');
+    }
+    tombol.textContent = 'Mengirim…';
+    const r = await panggil('pengajuanManual', {
+      token: sessionStorage.getItem('token'), jenis, alasan,
+      lat: pos.coords.latitude, lng: pos.coords.longitude, idPerangkat: idPerangkat()
+    });
+    if (r.ok) { tampilkanLogin(r.pesan + ' Anda keluar otomatis.'); return; }
+    if (r.sesiHabis) { tampilkanLogin(); $('galatLogin').textContent = r.pesan; return; }
+    throw new Error(r.pesan);
+  } catch (e) {
+    galat.textContent = e instanceof TypeError
+      ? 'Tidak bisa terhubung ke server. Periksa sinyal, lalu coba lagi.'
+      : (e.message || 'Terjadi kesalahan. Coba lagi.');
+  } finally {
+    tombol.disabled = false;
+    tombol.textContent = 'Kirim pengajuan';
+  }
+}
+
+mulai();
+</script>
+</body>
+</html>
