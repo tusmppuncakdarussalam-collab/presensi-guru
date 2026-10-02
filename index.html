@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Presensi Guru</title>
 <style>
-  :root { --tinta:#1f3a5f; --kertas:#f6f8fa; --hijau:#2e7d5b; --garis:#cfd8e0; --galat:#b3372f; }
+  :root { --tinta:#1f3a5f; --kertas:#f6f8fa; --hijau:#2e7d5b; --garis:#cfd8e0; --galat:#b3372f; --redup:#52667d; }
   * { box-sizing: border-box; }
   body { margin:0; min-height:100vh; background:var(--kertas); color:var(--tinta);
          font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height:1.5; }
@@ -28,6 +28,30 @@
   .bingkai { background:#000; border-radius:12px; overflow:hidden; aspect-ratio:3/4; margin-bottom:12px; }
   .bingkai video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
   .sukses { color:var(--hijau); font-weight:600; margin:0 0 8px; }
+#layarAdmin { max-width:900px; margin:0 auto; padding:20px; }
+#layarAdmin button { width:auto; margin-top:0; }
+#layarAdmin input, #layarAdmin select { width:auto; }
+#layarAdmin h1 { font-size:1.4rem; margin:0; }
+#layarAdmin h2 { font-size:1.1rem; margin:24px 0 8px; }
+#layarAdmin header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+#layarAdmin nav { display:flex; gap:8px; margin:16px 0; flex-wrap:wrap; }
+#layarAdmin button { padding:10px 16px; font-size:1rem; font-weight:600; border:0; border-radius:8px; background:var(--hijau); color:#fff; cursor:pointer; }
+#layarAdmin button.sekunder { background:#fff; color:var(--tinta); border:1px solid var(--garis); }
+#layarAdmin nav button.aktif { background:var(--tinta); color:#fff; border-color:var(--tinta); }
+#layarAdmin button:disabled { opacity:.5; cursor:not-allowed; }
+#layarAdmin input, #layarAdmin select { padding:10px; font-size:1rem; font-family:inherit; border:1px solid var(--garis); border-radius:8px; background:#fff; color:inherit; max-width:100%; }
+#layarAdmin label { display:block; font-weight:600; margin:14px 0 4px; }
+#layarAdmin .kartu { background:#fff; border:1px solid var(--garis); border-radius:10px; padding:14px; margin:0 0 10px; }
+#layarAdmin .baris { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+#layarAdmin .redup { color:var(--redup); }
+#layarAdmin .gulir { overflow-x:auto; }
+#layarAdmin table { width:100%; border-collapse:collapse; background:#fff; }
+#layarAdmin th, #layarAdmin td { padding:8px 10px; border-bottom:1px solid var(--garis); text-align:left; font-size:.95rem; white-space:nowrap; }
+#layarAdmin #info { min-height:1.5em; margin:8px 0; font-weight:600; }
+#layarAdmin #info.galat { color:var(--galat); }
+#layarAdmin #info.ok { color:var(--hijau); }
+#layarAdmin .lencana { background:var(--galat); color:#fff; border-radius:10px; padding:0 7px; margin-left:6px; font-size:.85rem; }
+#layarAdmin tr.merah td { background:#fde8e6; color:var(--galat); font-weight:600; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -95,6 +119,50 @@
   </section>
 </main>
 
+<section id="layarAdmin" hidden>
+  <header>
+    <h1 id="judul">Admin Presensi</h1>
+    <button class="sekunder" id="tombolKeluarAdmin">Keluar</button>
+  </header>
+  <nav>
+    <button data-tab="tinjau" class="aktif">Tinjau<span class="lencana" id="lencana" hidden></span></button>
+    <button data-tab="rekap" class="sekunder">Rekap</button>
+    <button data-tab="atur" class="sekunder">Pengaturan</button>
+  </nav>
+  <div id="tab-tinjau">
+    <h2>Pendaftaran wajah menunggu</h2>
+    <div id="daftarWajah"></div>
+    <h2>Pengajuan presensi manual menunggu</h2>
+    <div id="daftarManual"></div>
+    <h2>Reset wajah guru</h2>
+    <div class="baris">
+      <select id="pilihReset" aria-label="Pilih guru"></select>
+      <button class="sekunder" id="tombolReset">Reset wajah</button>
+    </div>
+    <p class="redup">Guru yang direset harus mendaftarkan wajah lagi dan disetujui ulang.</p>
+  </div>
+  <div id="tab-rekap" hidden>
+    <div class="baris">
+      <select id="modeRekap" aria-label="Jenis rekap"><option value="harian">Harian</option><option value="bulanan">Bulanan</option></select>
+      <input type="date" id="tglRekap" aria-label="Tanggal">
+      <input type="month" id="blnRekap" aria-label="Bulan" hidden>
+      <button id="tombolRekap">Tampilkan</button>
+    </div>
+    <p id="ringkasRekap" class="redup"></p>
+    <div class="gulir" id="tabelRekap"></div>
+    <div class="baris" id="unduhan" hidden></div>
+  </div>
+  <div id="tab-atur" hidden>
+    <div id="formAtur"></div>
+    <div class="baris">
+      <button class="sekunder" id="tombolLokasi">Pakai lokasi saya sekarang</button>
+      <button id="tombolSimpan">Simpan pengaturan</button>
+    </div>
+    <p class="redup">Tombol lokasi mengisi lintang dan bujur sekolah; gunakan saat Anda berada di sekolah.</p>
+  </div>
+  <p id="info" role="status"></p>
+</section>
+
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
 <script>
 // Ganti dengan URL Web App Apps Script Anda (akhiran /exec)
@@ -115,7 +183,8 @@ async function panggil(aksi, data = {}) {
 let guruSaatIni = null;
 
 function tampil(layar) {
-  ['layarLogin', 'layarUtama', 'layarSetuju', 'layarKamera', 'layarPresensi', 'layarManual'].forEach((id) => { $(id).hidden = id !== layar; });
+  ['layarLogin', 'layarUtama', 'layarSetuju', 'layarKamera', 'layarPresensi', 'layarManual', 'layarAdmin'].forEach((id) => { $(id).hidden = id !== layar; });
+  document.querySelector('main').hidden = layar === 'layarAdmin';
 }
 
 function tampilkanUtama(guru) {
@@ -136,6 +205,11 @@ function tampilkanUtama(guru) {
   $('tombolDaftarWajah').textContent = guru.statusWajah === 'menunggu' ? 'Ulangi pendaftaran wajah' : 'Daftarkan wajah';
 }
 
+function tampilkanAdmin(guru) {
+  tampil('layarAdmin');
+  window.mulaiAdmin(guru);
+}
+
 function tampilkanLogin(pesan = '') {
   sessionStorage.removeItem('token');
   tampil('layarLogin');
@@ -153,7 +227,7 @@ async function masuk() {
   tombol.disabled = true; tombol.textContent = 'Memeriksa…';
   try {
     const r = await panggil('login', { username, password });
-    if (r.ok) { sessionStorage.setItem('token', r.token); tampilkanUtama(r.guru); }
+    if (r.ok) { sessionStorage.setItem('token', r.token); if (r.guru.peran === 'admin') tampilkanAdmin(r.guru); else tampilkanUtama(r.guru); }
     else $('galatLogin').textContent = r.pesan;
   } catch (e) {
     $('galatLogin').textContent = 'Tidak bisa terhubung ke server. Periksa sinyal, lalu coba lagi.';
@@ -191,7 +265,7 @@ async function mulai() {
     const token = sessionStorage.getItem('token');
     if (token) {
       const s = await panggil('cekSesi', { token });
-      if (s.ok) tampilkanUtama(s.guru); else tampilkanLogin();
+      if (!s.ok) tampilkanLogin(); else if (s.guru.peran === 'admin') tampilkanAdmin(s.guru); else tampilkanUtama(s.guru);
     }
   } catch (e) {
     $('namaSekolah').textContent = 'Tidak bisa terhubung ke server.';
@@ -387,10 +461,6 @@ async function mulaiPresensi() {
     }
     const pos = await ambilLokasi();
     if (!aktif()) return;
-    const d = hitungJarak(pos.coords.latitude, pos.coords.longitude, konfig.lat_sekolah, konfig.lng_sekolah);
-    if (d > konfig.radius_meter) {
-      throw new Error('Anda berada sekitar ' + Math.round(d) + ' m dari sekolah, di luar batas ' + konfig.radius_meter + ' m. Presensi hanya bisa dilakukan di sekolah.');
-    }
     petunjuk('Menyiapkan kamera…');
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
     $('videoP').srcObject = stream;
@@ -462,6 +532,206 @@ async function kirimManual() {
   }
 }
 
+/* ---------- Panel admin (di dalam index.html) ---------- */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function panggil(aksi, data = {}) {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ aksi, token: sessionStorage.getItem('token'), ...data })
+    });
+    const r = await res.json();
+    if (r.sesiHabis) { tampilkanLogin('Sesi habis. Silakan masuk lagi.'); throw new Error('sesi'); }
+    return r;
+  }
+
+  function info(teks, galat) {
+    const el = $('info');
+    el.textContent = teks || '';
+    el.className = teks ? (galat ? 'galat' : 'ok') : '';
+  }
+
+  async function jalankan(fn) {
+    info('');
+    try { await fn(); }
+    catch (e) {
+      if (e.message === 'sesi') return;
+      info(e instanceof TypeError ? 'Tidak bisa terhubung ke server. Periksa sinyal.' : e.message, true);
+    }
+  }
+
+  window.mulaiAdmin = (guru) => {
+    $('judul').textContent = 'Admin: ' + guru.nama;
+    bukaTab('tinjau');
+  };
+
+  async function keluar() {
+    const token = sessionStorage.getItem('token');
+    try { await panggil('logout', { token }); } catch (e) {}
+    tampilkanLogin();
+  }
+
+  function bukaTab(nama) {
+    ['tinjau', 'rekap', 'atur'].forEach((t) => { $('tab-' + t).hidden = t !== nama; });
+    document.querySelectorAll('#layarAdmin nav button').forEach((b) => { b.className = b.dataset.tab === nama ? 'aktif' : 'sekunder'; });
+    info('');
+    if (nama === 'tinjau') jalankan(muatTinjau);
+    if (nama === 'atur') jalankan(muatAtur);
+  }
+
+  /* ---------- Tinjau ---------- */
+  async function muatTinjau() {
+    const r = await panggil('adminRingkas');
+    if (!r.ok) throw new Error(r.pesan);
+    $('daftarWajah').innerHTML = r.wajah.length ? r.wajah.map((w) =>
+      `<div class="kartu"><strong>${esc(w.nama)}</strong> <span class="redup">(${esc(w.id)})</span><br>
+       Mendaftar ${esc(w.waktu)} · perangkat ${esc(w.perangkat || '-')}
+       <div class="baris"><button data-aksi="wajah" data-t="setujui" data-id="${esc(w.id)}">Setujui</button>
+       <button class="sekunder" data-aksi="wajah" data-t="tolak" data-id="${esc(w.id)}">Tolak</button></div></div>`).join('')
+      : '<p class="redup">Tidak ada yang menunggu.</p>';
+    $('daftarManual').innerHTML = r.manual.length ? r.manual.map((p) =>
+      `<div class="kartu"><strong>${esc(p.nama)}</strong> <span class="redup">(${esc(p.jenis)}, ${esc(p.tanggal)} ${esc(p.jam)})</span><br>
+       Alasan: ${esc(p.alasan)}<br><span class="redup">Jarak dari sekolah ${esc(p.jarak)} m</span>
+       <div class="baris"><button data-aksi="manual" data-t="setujui" data-id="${esc(p.idPengajuan)}">Setujui</button>
+       <button class="sekunder" data-aksi="manual" data-t="tolak" data-id="${esc(p.idPengajuan)}">Tolak</button></div></div>`).join('')
+      : '<p class="redup">Tidak ada yang menunggu.</p>';
+    $('pilihReset').innerHTML = r.guruBerwajah.length
+      ? r.guruBerwajah.map((g) => `<option value="${esc(g.id)}">${esc(g.nama)} (${esc(g.id)})</option>`).join('')
+      : '<option value="">Belum ada wajah terdaftar</option>';
+    $('tombolReset').disabled = !r.guruBerwajah.length;
+    const total = r.wajah.length + r.manual.length;
+    $('lencana').hidden = !total;
+    $('lencana').textContent = total;
+  }
+
+  async function tindakan(aksi, t, id, tombol) {
+    const teksTanya = { tolak: 'Tolak permintaan ini?', reset: 'Reset wajah guru ini? Guru harus mendaftar ulang.' }[t];
+    if (teksTanya && !confirm(teksTanya)) return;
+    await jalankan(async () => {
+      tombol.disabled = true;
+      try {
+        const r = await panggil(aksi === 'wajah' ? 'adminWajah' : 'adminManual',
+          aksi === 'wajah' ? { id, tindakan: t } : { idPengajuan: id, tindakan: t });
+        if (!r.ok) throw new Error(r.pesan);
+        info('Berhasil.');
+        await muatTinjau();
+      } finally { tombol.disabled = false; }
+    });
+  }
+
+  /* ---------- Rekap ---------- */
+  let unduhan = [];
+
+  function unduhCsv(nama, baris) {
+    const teks = baris.map((r) => r.map((v) => {
+      let s = String(v == null ? '' : v);
+      if (/^[=+\-@]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    }).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + teks], { type: 'text/csv;charset=utf-8' }));
+    a.download = nama;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function tabel(kepala, baris) {
+    return '<table><thead><tr>' + kepala.map((k) => `<th>${esc(k)}</th>`).join('') + '</tr></thead><tbody>' +
+      baris.map((r) => '<tr' + (String(r[r.length - 1]).startsWith('Peringatan') ? ' class="merah"' : '') + '>' + r.map((v) => `<td>${esc(v)}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+  }
+
+  function pasangUnduhan() {
+    $('unduhan').hidden = !unduhan.length;
+    $('unduhan').innerHTML = unduhan.map((u, i) => `<button class="sekunder" data-unduh="${i}">${esc(u.label)}</button>`).join('');
+  }
+
+  async function tampilkanRekap() {
+    const harian = $('modeRekap').value === 'harian';
+    const r = harian ? await panggil('adminRekapHarian', { tanggal: $('tglRekap').value })
+                     : await panggil('adminRekapBulanan', { bulan: $('blnRekap').value });
+    if (!r.ok) throw new Error(r.pesan);
+    if (harian) {
+      const kepala = ['Nama', 'Masuk', 'Pulang', 'Status', 'Metode', 'Peringatan'];
+      const baris = r.baris.map((b) => [b.nama, b.masuk, b.pulang, b.status, b.metode, b.peringatan || '']);
+      $('ringkasRekap').textContent = `Hadir ${r.ringkas.hadir} (terlambat ${r.ringkas.terlambat}) · belum presensi ${r.ringkas.belum}`;
+      $('tabelRekap').innerHTML = tabel(kepala, baris);
+      unduhan = [{ label: 'Unduh CSV', nama: 'rekap-harian-' + $('tglRekap').value + '.csv', baris: [kepala, ...baris] }];
+    } else {
+      const kepalaR = ['Nama', 'Hari hadir', 'Terlambat', 'Manual'];
+      const baris = r.ringkasan.map((b) => [b.nama, b.hadir, b.terlambat, b.manual]);
+      const kepalaD = ['Tanggal', 'ID', 'Nama', 'Masuk', 'Pulang', 'Terlambat', 'Metode', 'Jarak (m)', 'Peringatan'];
+      $('ringkasRekap').textContent = 'Hari hadir dihitung dari data presensi; libur dan hari tanpa kegiatan tidak dihitung sebagai alpa.';
+      $('tabelRekap').innerHTML = tabel(kepalaR, baris) + '<h2>Rincian</h2>' + tabel(kepalaD, r.rincian);
+      unduhan = [
+        { label: 'Unduh ringkasan', nama: 'rekap-bulanan-' + $('blnRekap').value + '.csv', baris: [kepalaR, ...baris] },
+        { label: 'Unduh rincian', nama: 'rincian-' + $('blnRekap').value + '.csv', baris: [kepalaD, ...r.rincian] }
+      ];
+    }
+    pasangUnduhan();
+  }
+
+  /* ---------- Pengaturan ---------- */
+  const KOLOM = [
+    ['nama_sekolah', 'Nama sekolah', 'text'], ['lat_sekolah', 'Lintang sekolah', 'text'], ['lng_sekolah', 'Bujur sekolah', 'text'],
+    ['radius_meter', 'Radius presensi (meter)', 'number'], ['jam_masuk', 'Jam masuk', 'time'], ['jam_pulang', 'Jam pulang', 'time'],
+    ['toleransi_menit', 'Toleransi terlambat (menit)', 'number'],
+    ['ambang_kecocokan', 'Ambang kecocokan wajah (makin kecil makin ketat)', 'number'],
+    ['jeda_menit', 'Jeda dari masuk ke pulang (menit)', 'number'], ['durasi_sesi_menit', 'Durasi sesi login (menit)', 'number'],
+    ['email_admin', 'Email notifikasi admin (boleh kosong)', 'email']
+  ];
+
+  async function muatAtur() {
+    const r = await panggil('adminConfig');
+    if (!r.ok) throw new Error(r.pesan);
+    $('formAtur').innerHTML = KOLOM.map(([k, label, tipe]) =>
+      `<label for="c_${k}">${esc(label)}</label><input id="c_${k}" type="${tipe}" ${tipe === 'number' ? 'step="any"' : ''} ${tipe === 'text' ? 'inputmode="text"' : ''} value="${esc(r.config[k])}">`).join('');
+  }
+
+  async function simpanAtur() {
+    const nilai = {};
+    KOLOM.forEach(([k]) => { nilai[k] = $('c_' + k).value; });
+    const r = await panggil('adminSimpanConfig', { nilai });
+    if (!r.ok) throw new Error(r.pesan);
+    info('Pengaturan disimpan.');
+  }
+
+  function pakaiLokasi() {
+    if (!navigator.geolocation) return info('Browser ini tidak mendukung lokasi.', true);
+    info('Mengambil lokasi…');
+    navigator.geolocation.getCurrentPosition((p) => {
+      $('c_lat_sekolah').value = p.coords.latitude.toFixed(6);
+      $('c_lng_sekolah').value = p.coords.longitude.toFixed(6);
+      info('Lokasi terisi (akurasi sekitar ' + Math.round(p.coords.accuracy) + ' m). Klik Simpan untuk menerapkan.');
+    }, () => info('Lokasi tidak bisa diambil. Izinkan lokasi lalu coba lagi.', true),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+
+  /* ---------- Awal ---------- */
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-aksi]');
+    if (b) tindakan(b.dataset.aksi, b.dataset.t, b.dataset.id, b);
+    const u = e.target.closest('button[data-unduh]');
+    if (u) { const d = unduhan[+u.dataset.unduh]; unduhCsv(d.nama, d.baris); }
+    const t = e.target.closest('nav button');
+    if (t) bukaTab(t.dataset.tab);
+  });
+  $('tombolKeluarAdmin').addEventListener('click', keluar);
+  $('tombolReset').addEventListener('click', (e) => { const id = $('pilihReset').value; if (id) tindakan('wajah', 'reset', id, e.target); });
+  $('tombolRekap').addEventListener('click', () => jalankan(tampilkanRekap));
+  $('modeRekap').addEventListener('change', () => {
+    const h = $('modeRekap').value === 'harian';
+    $('tglRekap').hidden = !h; $('blnRekap').hidden = h;
+  });
+  $('tombolSimpan').addEventListener('click', () => jalankan(simpanAtur));
+  $('tombolLokasi').addEventListener('click', pakaiLokasi);
+
+  const sekarang = new Date(), pad = (n) => String(n).padStart(2, '0');
+  $('tglRekap').value = `${sekarang.getFullYear()}-${pad(sekarang.getMonth() + 1)}-${pad(sekarang.getDate())}`;
+  $('blnRekap').value = `${sekarang.getFullYear()}-${pad(sekarang.getMonth() + 1)}`;
+})();
 mulai();
 </script>
 </body>
